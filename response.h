@@ -16,7 +16,7 @@ struct http_response {
 
 /* response_init: populate a response struct. body may be NULL for bodyless res
  * ponses. returns -1 if body exceeds MAX_BODY_SIZE. */
-int response_init(struct http_request *res,
+int response_init(struct http_response *res,
 		int status,
 		const char *content_type,
 		const char *body);
