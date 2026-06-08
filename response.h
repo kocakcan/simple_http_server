@@ -5,12 +5,12 @@
 
 #define MAX_STATUS_TEXT		64
 #define MAX_CONTENT_TYPE	64
-#define MAX_BODY_SIZE		4096
+#define MAX_BODY_SIZE		(1024 * 1024)
 
 struct http_response {
 	int	status;
 	char	content_type[MAX_CONTENT_TYPE];
-	char	body[MAX_BODY_SIZE];
+	char	*body;
 	size_t	body_len;
 };
 

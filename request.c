@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "request.h"
 
 int parse_request(const char *raw, struct http_request *req) {
@@ -33,7 +34,10 @@ int parse_request(const char *raw, struct http_request *req) {
 	while (1) {
 		const char *next_crlf = strstr(cursor, "\r\n");
 		if (!next_crlf) return -1;
-		if (next_crlf == cursor) break;
+		if (next_crlf == cursor) {
+			cursor += 2;
+			break;
+		}
 		if (req->header_count >= MAX_HEADERS) return -1;
 
 		const char *colon = memchr(cursor, ':', next_crlf - cursor);
@@ -55,6 +59,23 @@ int parse_request(const char *raw, struct http_request *req) {
 		h->value[value_len] = '\0';
 		req->header_count++;
 		cursor = next_crlf + 2;
+	}
+
+	size_t content_length = 0;
+	for (int i = 0; i < req->header_count; ++i) {
+		if (strcasecmp(req->headers[i].name,
+					"Content-Length") == 0) {
+			content_length = (size_t)atoi(req->headers[i].value);
+			break;
+		}
+	}
+
+	if (content_length == 0) {
+		req->body	= NULL;
+		req->body_len	= 0;
+	} else {
+		req->body	= (char *)cursor;
+		req->body_len	= content_length;
 	}
 	return 0;
 }

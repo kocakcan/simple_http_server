@@ -1,7 +1,7 @@
 CC	= gcc
 CFLAGS	= -Wall -Wextra -Wpedantic -g
 
-SRCS	= main.c request.c response.c router.c handlers.c
+SRCS	= main.c request.c read_request.c response.c router.c handlers.c
 OBJS	= $(SRCS:.c=.o)
 TARGET	= http_server
 

@@ -35,7 +35,7 @@ check() {
         return
     fi
 
-    if [ -n "$expected_body" ] && ! echo "$actual_body" | grep -q "$expected_body"; then
+    if [ -n "$expected_body" ] && ! printf '%s' "$actual_body" | grep -q "$expected_body"; then
         fail "$description - expected body to contain '$expected_body', got '$actual_body'"
         return
     fi
@@ -60,12 +60,33 @@ check_raw_400() {
     fi
 }
 
+# ── Large body check via pipe ─────────────────────────────────────────────────
+check_large_body() {
+    local description="$1"
+    local size="$2"
+    local expected_status="$3"
+    local response
+    local actual_status
+
+    response=$(python3 -c "import sys; sys.stdout.write('X'*$size)" \
+        | curl -s -w "\n__STATUS__%{http_code}" \
+        -X POST --data-binary @- \
+        --max-time 5 "$BASE_URL/echo" 2>/dev/null)
+    actual_status=$(echo "$response" | grep "__STATUS__" | sed 's/__STATUS__//')
+
+    if [ "$actual_status" = "$expected_status" ]; then
+        pass "$description"
+    else
+        fail "$description - expected HTTP $expected_status, got HTTP ${actual_status:-no response}"
+    fi
+}
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 section "Happy Paths"
 check "GET  /           → 200 + Hello World"  "200" "Hello, World!"   "$BASE_URL/"
 check "GET  /about      → 200 + about text"   "200" "Simple HTTP"     "$BASE_URL/about"
-check "POST /echo       → 200 + echo msg"     "200" "Echo:"           -X POST -d "hello" "$BASE_URL/echo"
+check "POST /echo       → 200 + echo msg"     "200" "hello"           -X POST -d "hello" "$BASE_URL/echo"
 
 section "404 Not Found"
 check "GET  /nope       → 404"                "404" "404 Not Found"   "$BASE_URL/nope"
@@ -95,9 +116,22 @@ check "Custom headers pass through → 200"  "200" "Hello" \
     -H "Authorization: Bearer token123" \
     "$BASE_URL/"
 
-section "POST /echo with body sizes"
-check "POST /echo small body  → 200"  "200" "Echo:" -X POST -d "hi"                              "$BASE_URL/echo"
-check "POST /echo larger body → 200"  "200" "Echo:" -X POST -d "$(python3 -c 'print("X"*1000)')" "$BASE_URL/echo"
+section "Body Reading — POST /echo"
+check "Empty body                → 200 + empty msg"  "200" "empty body"  \
+    -X POST -H "Content-Length: 0" "$BASE_URL/echo"
+check "Small body echoed back    → 200"              "200" "hello there" \
+    -d "hello there" "$BASE_URL/echo"
+check "Body with spaces          → 200"              "200" "hello world" \
+    -d "hello world" "$BASE_URL/echo"
+check "Body with special chars   → 200"              "200" "foo=bar&baz" \
+    -d "foo=bar&baz" "$BASE_URL/echo"
+check "1000 byte body echoed     → 200"              "200" "XXX"         \
+    -d "$(python3 -c 'print("X"*1000, end="")')" "$BASE_URL/echo"
+check "5000 byte body echoed     → 200"              "200" "XXX"         \
+    -d "$(python3 -c 'print("X"*5000, end="")')" "$BASE_URL/echo"
+
+section "Body Reading — Size Limits"
+check_large_body "Body over 1MB cap  → 400" 1048577 "400"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo -e "\n────────────────────────────────────"

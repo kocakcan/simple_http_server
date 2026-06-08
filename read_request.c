@@ -41,8 +41,8 @@ char *read_full_request(int fd) {
 		if (total >= capacity - 1) {
 			size_t new_cap = capacity * 2;
 			if (new_cap > MAX_RAW_SIZE) {
-				fprintf(stderr, "read_full_request: request too
-						large\n");
+				fprintf(stderr, "read_full_request: request too"
+						" large\n");
 				free(buf);
 				return NULL;
 			}

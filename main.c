@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "request.h"
+#include "read_request.h"
 #include "response.h"
 #include "router.h"
 #include "handlers.h"
@@ -47,29 +48,26 @@ int main(void) {
 	while (1) {
 		int client_fd = accept(sockfd, NULL, NULL);
 		if (client_fd < 0) { perror("accept"); continue; }
-		char buf[BUF_SIZE];
-		ssize_t n = read(client_fd, buf, sizeof(buf) - 1);
-		if (n < 0) {
-			perror("read");
+		char *raw = read_full_request(client_fd);
+		if (!raw) {
+			send_response(client_fd, 400, "text/plain", "400 Bad"
+					" Request\n");
 			close(client_fd);
 			continue;
 		}
-		if (n == 0) {
-			close(client_fd);
-			continue;
-		}
-		buf[n] = '\0';
 		struct http_request req;
-		if (parse_request(buf, &req) < 0) {
+		if (parse_request(raw, &req) < 0) {
 			fprintf(stderr, "Malformed request, sending 400\n");
 			send_response(client_fd, 400, "text/plain", 
 					"400 Bad Request");
+			free(raw);
 			close(client_fd);
 			continue;
 		}
 		printf("%s %s %s (%d headers)\n",
 			req.method, req.path, req.version, req.header_count);
 		router_dispatch(client_fd, &req, routes, ROUTE_COUNT);
+		free(raw);
 		close(client_fd);
 	}
 	close(sockfd);

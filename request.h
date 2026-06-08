@@ -15,11 +15,13 @@ struct http_header {
 };
 
 struct http_request {
-	char method[MAX_METHOD];
-	char path[MAX_PATH];
-	char version[MAX_VERSION];
-	struct http_header headers[MAX_HEADERS];
-	int header_count;
+	char 	method[MAX_METHOD];
+	char 	path[MAX_PATH];
+	char 	version[MAX_VERSION];
+	struct	http_header headers[MAX_HEADERS];
+	int 	header_count;
+	char 	*body;
+	size_t 	body_len;
 };
 
 int parse_request(const char *raw, struct http_request *req);

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "response.h"
@@ -11,6 +12,7 @@ const char *status_text(int status) {
 		case 400: return "Bad Request";
 		case 404: return "Not Found";
 		case 405: return "Method Not Allowed";
+		case 413: return "Payload Too Large";
 		case 500: return "Internal Server Error";
 		default:  return "Unknown";
 	}
@@ -27,6 +29,8 @@ int response_init(struct http_response *res,
 	if (body) {
 		size_t len = strlen(body);
 		if (len >= MAX_BODY_SIZE) return -1;
+		res->body = malloc(len + 1);
+		if (!res->body) return -1;
 		memcpy(res->body, body, len);
 		res->body_len = len;
 	}
